@@ -25,7 +25,7 @@ var (
 	pq      Tester = &pqDB{}
 )
 
-// pqDB validates the postgres driver by Blake Mizerany (github.com/bmizerany/pq.go)
+// pqDB validates the postgres driver by Blake Mizerany (github.com/lib/pq.go)
 type pqDB struct {
 	once    sync.Once // guards init of running
 	running bool      // whether port 5432 is listening
