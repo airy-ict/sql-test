@@ -3,11 +3,9 @@ package sqltest
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"sync"
@@ -21,7 +19,6 @@ type Tester interface {
 var (
 	myMysql Tester = &myMysqlDB{}
 	goMysql Tester = &goMysqlDB{}
-	sqlite  Tester = sqliteDB{}
 	pq      Tester = &pqDB{}
 )
 
@@ -73,8 +70,6 @@ func (p *pqDB) Running() bool {
 	})
 	return p.running
 }
-
-type sqliteDB struct{}
 
 type myMysqlDB struct {
 	once    sync.Once // guards init of running
@@ -134,19 +129,6 @@ func (t params) q(sql string) string {
 		n++
 		return "$" + strconv.Itoa(n)
 	})
-}
-
-func (sqliteDB) RunTest(t *testing.T, fn func(params)) {
-	tempDir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
-	db, err := sql.Open("sqlite3", filepath.Join(tempDir, "foo.db"))
-	if err != nil {
-		t.Fatalf("foo.db open fail: %v", err)
-	}
-	fn(params{sqlite, t, db})
 }
 
 func (m *myMysqlDB) RunTest(t *testing.T, fn func(params)) {
@@ -222,16 +204,12 @@ func (m *goMysqlDB) RunTest(t *testing.T, fn func(params)) {
 }
 
 func sqlBlobParam(t params, size int) string {
-	if t.dbType == sqlite {
-		return fmt.Sprintf("blob[%d]", size)
-	}
 	if t.dbType == pq {
 		return "bytea"
 	}
 	return fmt.Sprintf("VARBINARY(%d)", size)
 }
 
-func TestBlobs_SQLite(t *testing.T)  { sqlite.RunTest(t, testBlobs) }
 func TestBlobs_MyMySQL(t *testing.T) { myMysql.RunTest(t, testBlobs) }
 func TestBlobs_GoMySQL(t *testing.T) { goMysql.RunTest(t, testBlobs) }
 func TestBlobs_PQ(t *testing.T)      { pq.RunTest(t, testBlobs) }
@@ -261,7 +239,6 @@ func testBlobs(t params) {
 	}
 }
 
-func TestManyQueryRow_SQLite(t *testing.T)  { sqlite.RunTest(t, testManyQueryRow) }
 func TestManyQueryRow_MyMySQL(t *testing.T) { myMysql.RunTest(t, testManyQueryRow) }
 func TestManyQueryRow_GoMySQL(t *testing.T) { goMysql.RunTest(t, testManyQueryRow) }
 func TestManyQueryRow_PQ(t *testing.T)      { pq.RunTest(t, testManyQueryRow) }
@@ -282,7 +259,6 @@ func testManyQueryRow(t params) {
 	}
 }
 
-func TestTxQuery_SQLite(t *testing.T)  { sqlite.RunTest(t, testTxQuery) }
 func TestTxQuery_MyMySQL(t *testing.T) { myMysql.RunTest(t, testTxQuery) }
 func TestTxQuery_GoMySQL(t *testing.T) { goMysql.RunTest(t, testTxQuery) }
 func TestTxQuery_PQ(t *testing.T)      { pq.RunTest(t, testTxQuery) }
@@ -324,7 +300,6 @@ func testTxQuery(t params) {
 	}
 }
 
-func TestPreparedStmt_SQLite(t *testing.T)  { sqlite.RunTest(t, testPreparedStmt) }
 func TestPreparedStmt_MyMySQL(t *testing.T) { myMysql.RunTest(t, testPreparedStmt) }
 func TestPreparedStmt_GoMySQL(t *testing.T) { goMysql.RunTest(t, testPreparedStmt) }
 func TestPreparedStmt_PQ(t *testing.T)      { pq.RunTest(t, testPreparedStmt) }
